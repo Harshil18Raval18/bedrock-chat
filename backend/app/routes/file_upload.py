@@ -53,7 +53,8 @@ async def upload_file(
         # Upload to S3
         s3_bucket = os.getenv("LARGE_MESSAGE_BUCKET")
         if not s3_bucket:
-            raise HTTPException(status_code=500, detail="S3 bucket not configured")
+            logger.error("LARGE_MESSAGE_BUCKET environment variable not set")
+            raise HTTPException(status_code=500, detail="S3 bucket not configured. Please contact administrator.")
 
         s3_key = f"bot-files/{bot_id}/{file.filename}"
         

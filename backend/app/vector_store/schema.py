@@ -18,54 +18,42 @@ def init_vector_store_schema():
 
         # Create documents table
         create_documents_table = """
-        CREATE TABLE IF NOT EXISTS vector_documents (
+        CREATE TABLE IF NOT EXISTS documents (
             id SERIAL PRIMARY KEY,
             bot_id VARCHAR(255) NOT NULL,
-            file_name VARCHAR(255) NOT NULL,
-            s3_path VARCHAR(512) NOT NULL,
-            file_size BIGINT,
-            mime_type VARCHAR(50),
+            file_name VARCHAR(500) NOT NULL,
+            s3_path VARCHAR(1000) NOT NULL,
+            file_size INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(bot_id, s3_path)
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
         store.execute_update(create_documents_table)
-        logger.info("vector_documents table created")
+        logger.info("documents table created")
 
         # Create document chunks table with embeddings
         create_chunks_table = """
-        CREATE TABLE IF NOT EXISTS vector_chunks (
+        CREATE TABLE IF NOT EXISTS document_chunks (
             id SERIAL PRIMARY KEY,
-            document_id INTEGER NOT NULL REFERENCES vector_documents(id) ON DELETE CASCADE,
-            bot_id VARCHAR(255) NOT NULL,
-            chunk_index INTEGER NOT NULL,
+            document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
             chunk_text TEXT NOT NULL,
+            chunk_index INTEGER NOT NULL,
             embedding vector(1536),
-            page_number INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (document_id) REFERENCES vector_documents(id) ON DELETE CASCADE
+            metadata JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
         store.execute_update(create_chunks_table)
-        logger.info("vector_chunks table created")
+        logger.info("document_chunks table created")
 
-        # Create index for vector similarity search
-        create_vector_index = """
-        CREATE INDEX IF NOT EXISTS vector_chunks_embedding_idx 
-        ON vector_chunks USING ivfflat (embedding vector_cosine_ops)
-        WITH (lists = 100);
+        # Create indexes
+        create_indexes = """
+        CREATE INDEX IF NOT EXISTS idx_documents_bot_id ON documents(bot_id);
+        CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id);
+        CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops);
         """
-        store.execute_update(create_vector_index)
-        logger.info("Vector index created")
-
-        # Create index for bot_id queries
-        create_bot_index = """
-        CREATE INDEX IF NOT EXISTS vector_chunks_bot_id_idx 
-        ON vector_chunks(bot_id);
-        """
-        store.execute_update(create_bot_index)
-        logger.info("Bot ID index created")
+        store.execute_update(create_indexes)
+        logger.info("Indexes created")
 
         logger.info("Vector store schema initialized successfully")
 
