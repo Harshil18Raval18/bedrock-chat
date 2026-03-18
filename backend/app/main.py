@@ -1,6 +1,7 @@
 import logging
 import os
 import traceback
+from contextlib import asynccontextmanager
 from typing import Callable
 
 from app.dependencies import get_current_user
@@ -14,11 +15,13 @@ from app.routes.api_publication import router as api_publication_router
 from app.routes.bot import router as bot_router
 from app.routes.bot_store import router as bot_store_router
 from app.routes.conversation import router as conversation_router
+from app.routes.file_upload import router as file_upload_router
 from app.routes.global_config import router as global_config_router
 from app.routes.published_api import router as published_api_router
 from app.routes.user import router as user_router
 from app.user import User
 from app.utils import is_running_on_lambda
+from app.vector_store.initialization import initialize_vector_store
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -46,6 +49,7 @@ if not is_published_api:
         {"name": "user", "description": "User API (cognito)"},
         {"name": "bot_store", "description": "Bot Store API"},
         {"name": "config", "description": "Global Configuration API"},
+        {"name": "file_upload", "description": "File Upload API"},
     ]
     title = "Bedrock Chat"
 else:
@@ -53,9 +57,21 @@ else:
     title = "Bedrock Chat Published API"
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize vector store
+    logger.info("Initializing vector store...")
+    initialize_vector_store()
+    logger.info("Vector store initialized successfully")
+    yield
+    # Shutdown: cleanup if needed
+    logger.info("Shutting down...")
+
+
 app = FastAPI(
     openapi_tags=openapi_tags,
     title=title,
+    lifespan=lifespan,
 )
 
 
@@ -67,6 +83,7 @@ if not is_published_api:
     app.include_router(user_router)
     app.include_router(bot_store_router)
     app.include_router(global_config_router)
+    app.include_router(file_upload_router)
 else:
     app.include_router(published_api_router)
 

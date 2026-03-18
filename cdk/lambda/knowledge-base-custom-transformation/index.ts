@@ -4,7 +4,7 @@ import { type Handler } from "aws-lambda";
  * Custom transformation function used in the S3 data source of a shared Knowledge Base.
  * https://docs.aws.amazon.com/bedrock/latest/userguide/kb-custom-transformation.html
  */
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event: any, context: any) => {
   console.log(`Event: ${JSON.stringify(event)}`);
 
   const inputFiles = event.inputFiles as any[];
